@@ -19,17 +19,15 @@ python generator.py
 ## Road Seg
 in file `DataSave` you can find:
 ```python
-SEM_COLORS = {
+SEM_COLORS = { # Only select seg road line
 
     6: (157, 234, 50), # ROAD LINE
     7: (128, 64, 128), # ROAD
 
 }
 ```
-here is the list of segmentation you can modify:
-```
+here is the list of segmentation you can modify:[Carla Segmentation Camera](https://carla.readthedocs.io/en/latest/ref_sensors/#semantic-segmentation-camera)
 
-```
 
 ## Visualization
 1. modify data path as your path in following .py
