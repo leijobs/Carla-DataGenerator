@@ -1,0 +1,76 @@
+CARLA_CONFIG:
+  NUM_OF_VEHICLES: 60
+  NUM_OF_WALKERS: 10
+
+AGENT_CONFIG:
+  TRANSFORM: {location: [70, 13, 0.5], rotation: [0, 180, 0]}
+  BLUEPRINT: vehicle.lincoln.*
+
+SENSOR_CONFIG:
+  RGB_StereoLeft:
+    TRANSFORM: { location: [ 0, 0.2, 1.6 ], rotation: [ 0, 0, 0 ] }
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: standard
+    ATTRIBUTE: { image_size_x: 1080, image_size_y: 720, fov: 90 }
+
+  RGB_StereoRight:
+    TRANSFORM: {location: [0, -0.2, 1.6], rotation: [0, 0, 0]}
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: standard
+    ATTRIBUTE: { image_size_x: 1080, image_size_y: 720, fov: 90}
+
+  RGB_Raw:
+    TRANSFORM: { location: [ 1.4, 0, 1.4 ], rotation: [ 0, 0, 0 ] }
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: standard
+    ATTRIBUTE: { image_size_x: 1080, image_size_y: 720, fov: 90 }
+
+  RGB_Seg:
+    TRANSFORM: { location: [ 1.4, 0, 1.4 ], rotation: [ 0, 0, 0 ] }
+    BLUEPRINT: sensor.camera.semantic_segmentation
+    PROJECTION: standard
+    ATTRIBUTE: { image_size_x: 1080, image_size_y: 720, fov: 90 }
+
+  RGB_Front:
+    TRANSFORM: {location: [1.4, 0, 1.4], rotation: [0, 0, 0]}
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: fisheye
+    ATTRIBUTE: { image_size_x: 1080, image_size_y: 720, fov: 90}
+
+  RGB_Right:
+    TRANSFORM: {location: [0, 0.75, 1.4], rotation: [0, 90, 0]}
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: fisheye
+    ATTRIBUTE: { image_size_x: 720, image_size_y: 720, fov: 170}
+
+  RGB_Left:
+    TRANSFORM: {location: [0, -0.75, 1.4], rotation: [0, -90, 0]}
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: fisheye
+    ATTRIBUTE: { image_size_x: 720, image_size_y: 720, fov: 170}
+
+  RGB_Rear:
+    TRANSFORM: { location: [ -2.4, 0, 1.4], rotation: [ 0, 180, 0 ] }
+    BLUEPRINT: sensor.camera.rgb
+    PROJECTION: fisheye
+    ATTRIBUTE: { image_size_x: 720, image_size_y: 720, fov: 170 }
+
+  LIDAR:
+    TRANSFORM: { location: [ 1.4, 0, 1.8], rotation: [ 0, 0, 0 ] }
+    BLUEPRINT: sensor.lidar.ray_cast
+    ATTRIBUTE: {range: 100, rotation_frequency: 10, horizontal_fov: 360.0,  lower_fov: -40, upper_fov: 15, points_per_second: 1280000, channels: 64}
+
+FISHEYE_CONFIG:
+  FISHEYEMODEL:
+    INTRINSIC: {f_x: 349.366428628158, f_y: 347.47253125651315, c_x: 604.3073199050984, c_y: 530.760929642206}
+    DISTORT: {k_1: -0.03521708730034678, k_2: 0.005856923474217181, k_3: -0.004260776231175161, k_4: 0.0003235235858982926, k_5: 0.00}
+
+FILTER_CONFIG:
+  PRELIMINARY_FILTER_DISTANCE: 80
+  MAX_RENDER_DEPTH_IN_METERS: 80
+  MIN_VISIBLE_VERTICES_FOR_RENDER: 2
+  MAX_OUT_VERTICES_FOR_RENDER: 2
+
+SAVE_CONFIG:
+  ROOT_PATH: data/test12
+  STEP: 10
