@@ -37,10 +37,10 @@ here is the list of segmentation you can modify:[Carla Segmentation Camera](http
 2. install mayavi and vtk in advance
 3. run follow .py script:
 ```python
-python kitti_img_vis.py
-python kitti_lidar_vis.py
-python kitti_plot_3d_boxes.py
+python vis_img_3d.py
 ```
+
+![本地路径](./view-of-vkitti/vkitti.png "图片")
 
 ## Kitti-style object filter
 in `data_utils.py` you can find this, you can change object grouping scheme
