@@ -6,7 +6,9 @@ I modified the [Original Project](https://github.com/mmmmaomao/DataGenerator) as
 * support road segmentation task
 * support kitti-style object label
 * support kitti-based data visualization
-- [ ] Todo: support fisheye camera
+* support object tracking id label
+* support ego pose (location and pose)
+
 
 ## SimpleRun
 1. download carla `0.9.12` or newer pre-build version
