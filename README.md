@@ -8,6 +8,7 @@ I modified the [Original Project](https://github.com/mmmmaomao/DataGenerator) as
 * support kitti-based data visualization
 * support object tracking id label
 * support ego pose (location and pose)
+- [ ] todo: fix orientation error
 
 
 ## SimpleRun
