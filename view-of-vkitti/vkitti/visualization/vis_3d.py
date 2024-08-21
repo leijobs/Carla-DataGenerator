@@ -26,29 +26,21 @@ Constructor which prepared the 3D plot in the requested frame.
             self.transform_matrices = {
                 'camera': np.eye(4, dtype=float),
                 'lidar': self.frame_transforms.t_camera_lidar,
-                'radar_arbe': self.frame_transforms.t_camera_radar_arbe,
-                'radar_ars548': self.frame_transforms.t_camera_radar_ars548
             }
         elif self.origin == 'lidar':
             self.transform_matrices = {
                 'camera': self.frame_transforms.t_lidar_camera,
                 'lidar': np.eye(4, dtype=float),
-                'radar_arbe': self.frame_transforms.t_camera_radar_arbe,
-                'radar_ars548': self.frame_transforms.t_lidar_radar_ars548
             }
         elif self.origin == 'radar_arbe':
             self.transform_matrices = {
                 'camera': self.frame_transforms.t_radar_camera,
                 'lidar': self.frame_transforms.t_radar_lidar,
-                'radar_arbe': np.eye(4, dtype=float),
-                'radar_ars548': self.frame_transforms.t_camera_radar_ars548,
             }
         elif self.origin == 'radar_ars548':
             self.transform_matrices = {
                 'camera': self.frame_transforms.t_radar_camera,
                 'lidar': self.frame_transforms.t_radar_lidar,
-                'radar_arbe': self.frame_transforms.t_camera_radar_arbe,
-                'radar_ars548': np.eye(4, dtype=float)
             }
         else:
             raise ValueError("Origin must be camera, lidar or radar!")
@@ -58,10 +50,6 @@ Constructor which prepared the 3D plot in the requested frame.
                  lidar_origin_plot: bool = False,
                  camera_origin_plot: bool = False,
                  lidar_points_plot: bool = False,
-                 radar_ars548_points_plot: bool = False,
-                 radar_ars548_velocity_plot: bool = False,
-                 radar_arbe_points_plot: bool = False,
-                 radar_arbe_velocity_plot: bool = False,
                  plot_annotations: bool = False):
 
         self.draw_plot(radar_arbe_origin_plot,
@@ -69,51 +57,7 @@ Constructor which prepared the 3D plot in the requested frame.
                        lidar_origin_plot,
                        camera_origin_plot,
                        lidar_points_plot,
-                       radar_ars548_points_plot,
-                       radar_ars548_velocity_plot,
-                       radar_arbe_points_plot,
-                       radar_arbe_velocity_plot,
                        plot_annotations)
-
-    def plot_radar_arbe_origin(self,
-                          label: bool = True,
-                          color: int = radar_plot_color_3d,
-                          axis_length: float = axis_length_3d,
-                          label_size: float = axis_label_size):
-        """
-This method plots the radar origin in the requested frame.
-        :param axis_length: Vector length of the axis.
-        :param label: Bool which sets if the label should be displayed.
-        :param color: Color of the label in int.
-        :param label_size: Size of the label.
-        """
-        self.plot += k3d_get_axes(self.transform_matrices['radar_arbe'], axis_length)
-
-        if label:
-            self.plot += k3d.text("radar",
-                                  position=self.transform_matrices['radar_arbe'][0:3, 3],
-                                  color=color,
-                                  size=label_size)
-
-    def plot_radar_ars548_origin(self,
-                              label: bool = True,
-                              color: int = radar_plot_color_3d,
-                              axis_length: float = axis_length_3d,
-                              label_size: float = axis_label_size):
-            """
-    This method plots the radar origin in the requested frame.
-            :param axis_length: Vector length of the axis.
-            :param label: Bool which sets if the label should be displayed.
-            :param color: Color of the label in int.
-            :param label_size: Size of the label.
-            """
-            self.plot += k3d_get_axes(self.transform_matrices['radar_ars548'], axis_length)
-
-            if label:
-                self.plot += k3d.text("radar",
-                                      position=self.transform_matrices['radar_ars548'][0:3, 3],
-                                      color=color,
-                                      size=label_size)
 
     def plot_lidar_origin(self,
                           label: bool = True,
@@ -170,68 +114,6 @@ This method plots the lidar pcl on the requested frame.
                                 point_size=pcl_size,
                                 color=color)
 
-    def plot_radar_ars548_points(self,
-                          pcl_size: float = radar_pcl_size,
-                          color: int = radar_plot_color_3d
-                          ):
-        """
-This method plots the radar pcl on the requested frame.
-        :param pcl_size: Size of the pcl particles in the graph.
-        :param color: Color of the pcl particles in the graph.
-        """
-        radar_points_camera_frame = transform_pcl(points=self.frame_data.radar_ars548_data,
-                                                  transform_matrix=self.transform_matrices['radar_ars548'])
-
-        self.plot += k3d.points(positions=np.asarray(radar_points_camera_frame[:, :3], dtype=float),
-                                point_size=pcl_size,
-                                color=color)
-
-    def plot_radar_arbe_points(self,
-                              pcl_size: float = radar_pcl_size,
-                              color: int = radar_plot_color_3d
-                              ):
-            """
-    This method plots the radar pcl on the requested frame.
-            :param pcl_size: Size of the pcl particles in the graph.
-            :param color: Color of the pcl particles in the graph.
-            """
-            radar_points_camera_frame = transform_pcl(points=self.frame_data.radar_arbe_data,
-                                                      transform_matrix=self.transform_matrices['radar_arbe'])
-
-            self.plot += k3d.points(positions=np.asarray(radar_points_camera_frame[:, :3], dtype=float),
-                                    point_size=pcl_size,
-                                    color=color)
-
-    def plot_radar_arbe_radial_velocity(self, color: int = radar_velocity_color_3d):
-        """
-This method plots the radar radial velocity vectors for each radar point in the requested frame.
-        :param color: Color of the vector.
-        """
-        compensated_radial_velocity = self.frame_data.radar_arbe_data[:, 5]
-        radar_points_camera_frame = transform_pcl(points=self.frame_data.radar_arbe_data,
-                                                  transform_matrix=self.transform_matrices['radar_arbe'])
-
-        pc_radar = radar_points_camera_frame[:, 0:3]
-
-        velocity_vectors = get_radar_velocity_vectors(pc_radar, compensated_radial_velocity)
-
-        self.plot += k3d.vectors(origins=pc_radar, vectors=velocity_vectors, color=color)
-
-    def plot_radar_ars548_radial_velocity(self, color: int = radar_velocity_color_3d):
-            """
-    This method plots the radar radial velocity vectors for each radar point in the requested frame.
-            :param color: Color of the vector.
-            """
-            compensated_radial_velocity = self.frame_data.radar_ars548_data[:, 5]
-            radar_points_camera_frame = transform_pcl(points=self.frame_data.radar_ars548_data,
-                                                      transform_matrix=self.transform_matrices['radar_ars548'])
-
-            pc_radar = radar_points_camera_frame[:, 0:3]
-
-            velocity_vectors = get_radar_velocity_vectors(pc_radar, compensated_radial_velocity)
-
-            self.plot += k3d.vectors(origins=pc_radar, vectors=velocity_vectors, color=color)
-
     def plot_annotations(self, class_colors=label_color_palette_3d, class_width=label_line_width_3d):
         """
 This method plots the annotations in the requested frame.
@@ -260,10 +142,6 @@ This method plots the annotations in the requested frame.
                   lidar_origin_plot: bool = False,
                   camera_origin_plot: bool = False,
                   lidar_points_plot: bool = False,
-                  radar_arbe_points_plot: bool = False,
-                  radar_arbe_velocity_plot: bool = False,
-                  radar_ars548_points_plot: bool = False,
-                  radar_ars548_velocity_plot: bool = False,
                   annotations_plot: bool = False,
                   write_to_html: bool = False,
                   html_name: str = "example",
@@ -272,12 +150,6 @@ This method plots the annotations in the requested frame.
                   ):
         """
 This method displays the plot with the specified arguments.
-        :param radar_arbe_origin_plot:
-        :param radar_ars548_origin_plot:
-        :param radar_arbe_points_plot:
-        :param radar_arbe_velocity_plot:
-        :param radar_ars548_points_plot:
-        :param radar_ars548_velocity_plot:
         :param auto_frame: When set to true, the frame is size automatically.
         :param grid_visible: Plot grid background.
         :param lidar_origin_plot: Plots the lidar origin axis.
@@ -290,12 +162,6 @@ This method displays the plot with the specified arguments.
 
         self.plot = k3d.plot(camera_auto_fit=auto_frame, axes_helper=0.0, grid_visible=grid_visible)
 
-        if radar_ars548_origin_plot:
-            self.plot_radar_ars548_origin()
-
-        if radar_arbe_origin_plot:
-            self.plot_radar_arbe_origin()
-
         if lidar_origin_plot:
             self.plot_lidar_origin()
 
@@ -304,18 +170,6 @@ This method displays the plot with the specified arguments.
 
         if lidar_points_plot:
             self.plot_lidar_points()
-
-        if radar_ars548_points_plot:
-            self.plot_radar_ars548_points()
-
-        if radar_arbe_points_plot:
-            self.plot_radar_arbe_points()
-
-        if radar_ars548_velocity_plot:
-            self.plot_radar_ars548_radial_velocity()
-
-        if radar_arbe_velocity_plot:
-            self.plot_radar_arbe_radial_velocity()
 
         if annotations_plot:
             self.plot_annotations()
