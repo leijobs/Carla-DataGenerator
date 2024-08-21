@@ -146,6 +146,30 @@ def face(corners: np.ndarray, color: tuple, alpha: float = 0.3):
     plt.fill(xs, ys, color=color, alpha=alpha)
 
 
+def plot_boxes_2d(boxes: list, colors=None):
+    for j in range(len(boxes)):
+        corners_img = np.array(boxes[j])
+
+        if colors is not None:
+            color = colors[j]
+        else:
+            color = (1.0, 1.0, 1.0)
+
+        if color == (1.0, 1.0, 1.0):
+            alpha = 0.15
+        else:
+            alpha = 0.2
+
+        # draw the 6 faces
+        face(corners_img[:4], color, alpha)
+        face(corners_img[4:], color, alpha)
+        face(np.array([corners_img[0], corners_img[1], corners_img[5], corners_img[4]]), color, alpha)
+        face(np.array([corners_img[1], corners_img[2], corners_img[6], corners_img[5]]), color, alpha)
+        face(np.array([corners_img[2], corners_img[3], corners_img[7], corners_img[6]]), color, alpha)
+        face(np.array([corners_img[0], corners_img[3], corners_img[7], corners_img[4]]), color, alpha)
+    return
+
+
 def plot_boxes(boxes: list, colors=None):
     for j in range(len(boxes)):
         corners_img = np.array(boxes[j])

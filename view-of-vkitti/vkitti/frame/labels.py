@@ -54,8 +54,15 @@ This method returns a list of dictionaries containing the label data.
             """
             type, truncated, occluded, alpha, bbox_x1, bbox_y1, bbox_x2, bbox_y2, h, w, l, x, y, z, rot, score, track_id = act_line
             h, w, l, x, y, z, rot, score = map(float, [h, w, l, x, y, z, rot, score])
+            bbox_x1, bbox_y1, bbox_x2, bbox_y2 = map(int, [bbox_x1, bbox_y1, bbox_x2, bbox_y2])
+            if rot > 2:
+                rot = -rot
 
             labels.append({'label_class': type,
+                           'bbox_xmin': bbox_x1,
+                           'bbox_ymin': bbox_y1,
+                           'bbox_xmax': bbox_x2,
+                           'bbox_ymax': bbox_y2,
                            'h': h,
                            'w': w,
                            'l': l,

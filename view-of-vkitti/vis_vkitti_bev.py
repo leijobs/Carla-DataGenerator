@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../..')))
 
 
 def getCalib():
-    intrisics = np.array([[640.000000, 0.000000, 640.000000], [0.000000, 640.000000, 320.000000], [0.0, 0.0, 1.0]])
+    intrisics = np.array([[540.000000, 0.000000, 540.000000], [0.000000, 540.000000, 360.000000], [0.0, 0.0, 1.0]])
     return intrisics
 
 
@@ -92,16 +92,13 @@ def vis_pc_2d_img(mask, point_cloud, labels, map_extents, map_resolution, name_i
             # rect = Rectangle((label['x'] / map_resolution + 100, label['z'] / map_resolution), label['w'] / map_resolution,
             #                  label['l'] / map_resolution, np.rad2deg(label['rotation']) - 90,
             #                  linewidth=2, edgecolor='r', facecolor='r')
-            rect = Rectangle((label['x'] / map_resolution + 100 - 5, label['z'] / map_resolution - 10), label['w'] / map_resolution,
+            rect = Rectangle((label['x'] / map_resolution, label['z'] / map_resolution), label['w'] / map_resolution,
                              label['l'] / map_resolution, np.rad2deg(label['rotation']),
-                             linewidth=2, edgecolor='r', facecolor='r')
+                             linewidth=1, edgecolor='r')
             # rect = Rectangle(((label['x'] - label['l'] / 2) / map_resolution + 100, (label['z'] - label['w'] / 2) / map_resolution),
             #                  label['w'] / map_resolution, label['l'] / map_resolution, np.rad2deg(label['rotation']) - 90,
             #                  linewidth=2, edgecolor='r', facecolor='r')
             ax.add_patch(rect)
-    if run_radar:
-        ax.scatter(point_cloud_new[:, 2] / map_resolution + 100, -point_cloud_new[:, 0] / map_resolution, s=1)
-    else:
         ax.scatter(point_cloud_new[:, 0] / map_resolution + 100, point_cloud_new[:, 2] / map_resolution, s=1)
     ax.set_xlim(0, 200)
     ax.set_ylim(0, 200)
@@ -131,7 +128,7 @@ def extractLabels(label_str):
     for act_line in label_str:  # Go line by line to split the keys
         act_line = act_line.split()
         # type, truncated, occluded, alpha, bbox_x1, bbox_y1, bbox_x2, bbox_y2, h, w, l, x, y, z, rot, score, track_id
-        type, truncated, occluded, alpha, bboxx1, bboxy1, bboxx2, bboxy2, h, w, l, x, y, z, rot = act_line
+        type, truncated, occluded, alpha, bboxx1, bboxy1, bboxx2, bboxy2, h, w, l, x, y, z, rot, score, track_id = act_line
         h, w, l, x, y, z, rot = map(float, [h, w, l, x, y, z, rot])
 
         labels.append({'label_class': type,
@@ -154,7 +151,7 @@ if __name__ == '__main__':
     # config.merge_from_file('../configs/datasets/vod.yml')
 
     # Create an vod instance
-    root_dir = r"/home/hosico/DataDisk/hdd2/DataGenerator-New/data/test/training"
+    root_dir = r"C:\Users\hoho\Documents\GitHub\Carla-DataGenerator"
     kitti_locations = KittiLocations(is_train=True,
                                      root_dir=root_dir,
                                      output_dir="example_output",

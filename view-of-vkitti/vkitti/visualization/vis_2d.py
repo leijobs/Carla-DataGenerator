@@ -1,4 +1,6 @@
 from matplotlib import pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.patches import Rectangle
 
 from vkitti.frame import FrameDataLoader, FrameTransformMatrix, FrameLabels, project_pcl_to_image, min_max_filter
 
@@ -45,6 +47,28 @@ This method plots the ground truth labels on the frame.
         labels = [d['corners'] for d in filtered]
 
         plot_boxes(labels, colors)
+
+    def plot_gt_labels_2d(self, max_distance_threshold):
+        """
+This method plots the ground truth labels on the frame.
+        :param max_distance_threshold: The maximum distance where labels are rendered.
+        """
+        frame_labels_class = FrameLabels(self.frame_data_loader.raw_labels)
+        box_points = [[label['label_class'], label['bbox_xmin'], label['bbox_ymin'], label['bbox_xmax'], label['bbox_ymax']]
+                      for label in frame_labels_class.labels_dict if label['label_class'] in self.classes_visualized]
+
+
+        for type, xmin, ymin, xmax, ymax in box_points:
+            width = xmax - xmin
+            height = ymax - ymin
+
+            ax = plt.gca()
+            rect = patches.Rectangle((xmin, ymin), width, height, linewidth=2, edgecolor="cyan", fill=False)
+
+            ax.add_patch(rect)
+
+        # 显示图形
+        # plt.imshow(self.image_copy, alpha=1)
 
     def plot_predictions(self, score_threshold, max_distance_threshold):
         """
@@ -93,6 +117,7 @@ This method plots the lidar pcl on the frame. It colors the points based on dist
 
     def draw_plot(self, plot_figure=True,
                   save_figure=True,
+                  show_2d: bool = False,
                   show_gt: bool = False,
                   show_pred: bool = False,
                   show_lidar: bool = False,
@@ -117,6 +142,9 @@ This method can be called to draw the frame with the required information.
 
         if show_gt:
             self.plot_gt_labels(max_distance_threshold=max_distance_threshold)
+
+        if show_2d:
+            self.plot_gt_labels_2d(max_distance_threshold=max_distance_threshold)
 
         if show_pred:
             self.plot_predictions(max_distance_threshold=max_distance_threshold,
