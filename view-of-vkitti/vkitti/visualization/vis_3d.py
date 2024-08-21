@@ -32,28 +32,16 @@ Constructor which prepared the 3D plot in the requested frame.
                 'camera': self.frame_transforms.t_lidar_camera,
                 'lidar': np.eye(4, dtype=float),
             }
-        elif self.origin == 'radar_arbe':
-            self.transform_matrices = {
-                'camera': self.frame_transforms.t_radar_camera,
-                'lidar': self.frame_transforms.t_radar_lidar,
-            }
-        elif self.origin == 'radar_ars548':
-            self.transform_matrices = {
-                'camera': self.frame_transforms.t_radar_camera,
-                'lidar': self.frame_transforms.t_radar_lidar,
-            }
         else:
             raise ValueError("Origin must be camera, lidar or radar!")
 
-    def __call__(self, radar_arbe_origin_plot: bool = False,
-                 radar_ars548_origin_plot: bool = False,
+    def __call__(self,
                  lidar_origin_plot: bool = False,
                  camera_origin_plot: bool = False,
                  lidar_points_plot: bool = False,
                  plot_annotations: bool = False):
 
-        self.draw_plot(radar_arbe_origin_plot,
-                       radar_ars548_origin_plot,
+        self.draw_plot(
                        lidar_origin_plot,
                        camera_origin_plot,
                        lidar_points_plot,
@@ -137,8 +125,6 @@ This method plots the annotations in the requested frame.
             k3d_plot_box(self.plot, corners_object, object_class_color, object_class_width)
 
     def draw_plot(self,
-                  radar_arbe_origin_plot: bool = False,
-                  radar_ars548_origin_plot: bool = False,
                   lidar_origin_plot: bool = False,
                   camera_origin_plot: bool = False,
                   lidar_points_plot: bool = False,
