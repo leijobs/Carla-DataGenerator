@@ -18,14 +18,50 @@ def save_ref_files(OUTPUT_FOLDER, id):
             f.write("{0:06}".format(id) + '\n')
         logging.info("Wrote reference files to %s", path)
 
+def save_imu_data(filename, imu_data):
+    logging.info("Wrote imu data to %s", filename)
+    imu_out = []
+    imu_out.append(imu_data.frame)
+    imu_out.append(imu_data.timestamp)
+    imu_out.append(imu_data.accelerometer.x)
+    imu_out.append(imu_data.accelerometer.y)
+    imu_out.append(imu_data.accelerometer.z)
+    imu_out.append(imu_data.gyroscope.x)
+    imu_out.append(imu_data.gyroscope.y)
+    imu_out.append(imu_data.gyroscope.z)
+    imu_out.append(imu_data.compass)
+    # print(imu_out)
 
-def save_image_data(filename, image):
-    logging.info("Wrote image data to %s", filename)
-    image.save_to_disk(filename)
+    with open(filename, "w") as f:
+        f.write(" ".join(map(str, imu_out)))
+
+def save_gnss_data(filename, gnss_data, ego_pose):
+    logging.info("Wrote gnss data to %s", filename)
+    # print(gnss_data)
+    gnss_out = []
+    gnss_out.append(gnss_data.frame)
+    gnss_out.append(gnss_data.timestamp)
+    gnss_out.append(gnss_data.latitude)
+    gnss_out.append(gnss_data.longitude)
+    gnss_out.append(gnss_data.altitude)
+    gnss_out.append(ego_pose.location.x)
+    gnss_out.append(ego_pose.location.y)
+    gnss_out.append(ego_pose.location.z)
+    gnss_out.append(ego_pose.rotation.yaw)
+    gnss_out.append(ego_pose.rotation.pitch)
+    gnss_out.append(ego_pose.rotation.roll)
+
+    with open(filename, "w") as f:
+        f.write(" ".join(map(str, gnss_out)))
+
 
 def save_seg_image_data(filename, image):
     im = Image.fromarray(image)
     im.save(filename)
+
+def save_image_data(filename, image):
+    logging.info("Wrote image data to %s", filename)
+    image.save_to_disk(filename)
 
 def save_bbox_image_data(filename, image):
     im = Image.fromarray(image)
@@ -70,12 +106,6 @@ def save_lidar_data(filename, point_cloud, format="bin"):
                       lidar_array[:, 2].min(), lidar_array[:, 0].max()))
         lidar_array.tofile(filename)
 
-def check_label_data(filename, datapoints):
-    with open(filename, 'w') as f:
-        out_str = "\n".join([str(point) for point in datapoints if point])
-        if out_str.strip() == '':
-            return False
-    return True
 
 def save_label_data(filename, datapoints):
     with open(filename, 'w') as f:
@@ -89,9 +119,7 @@ def save_calibration_matrices(transform, filename, intrinsic_mat):
         AVOD (and KITTI) refers to P as P=K*[R;t], so we will just store P.
         The resulting file will contain:
         3x4    p0-p3      Camera P matrix. Contains extrinsic
-                          and intrinsic parameters. (P=K*[R;t]) in the order of [Front, Left, Right, Rear]
-        3x2    p4-p5      Camera P matrix. Contains extrinsic
-                          and intrinsic parameters. (P=K*[R;t]) for Stereo camera.
+                          and intrinsic parameters. (P=K*[R;t])
         3x3    r0_rect    Rectification matrix, required to transform points
                           from velodyne to camera coordinate frame.
         3x4    tr_velodyne_to_cam    Used to transform from velodyne to cam
@@ -101,16 +129,15 @@ def save_calibration_matrices(transform, filename, intrinsic_mat):
                                                     Point_Velodyne.
         3x4    tr_imu_to_velo        Used to transform from imu to velodyne coordinate frame. This is not needed since we do not export
                                      imu data.
-        3x4    tr_cam_to_road        Used to transform from image to vehicle coordinate frame.
     """
     # KITTI format demands that we flatten in row-major order
     ravel_mode = 'C'
     P0 = intrinsic_mat
-    P0 = np.column_stack((P0, np.array([0,0,0])))
+    P0 = np.column_stack((P0, np.array([0, 0, 0])))
     P0 = np.ravel(P0, order=ravel_mode)
 
     camera_transform = transform[0]
-    lidar_transform = transform[4]
+    lidar_transform = transform[1]
     # pitch yaw rool
     b = math.radians(lidar_transform.rotation.pitch-camera_transform.rotation.pitch)
     x = math.radians(lidar_transform.rotation.yaw-camera_transform.rotation.yaw)
@@ -126,19 +153,15 @@ def save_calibration_matrices(transform, filename, intrinsic_mat):
 
     TR_velodyne = np.dot(np.array([[0, 1, 0], [0, 0, -1], [1, 0, 0]]), TR_velodyne)
 
-    '''
-    TR_velodyne = np.array([[0, -1, 0],
-                            [0, 0, -1],
-                            [1, 0, 0]])
-    '''
+    # TR_velodyne = np.array([[1, 0, 0],
+    #                         [0, 1, 0],
+    #                         [0, 0, 1]])
+
     # Add translation vector from velo to camera. This is 0 because the position of camera and lidar is equal in our configuration.
+
     TR_velodyne = np.column_stack((TR_velodyne, np.array([0, 0, 0])))
     TR_imu_to_velo = np.identity(3)
     TR_imu_to_velo = np.column_stack((TR_imu_to_velo, np.array([0, 0, 0])))
-
-    TR_cam_to_road = np.identity(3)
-    P0_x, P0_y, P0_z = transform[0].location.x, transform[0].location.y, transform[0].location.z
-    TR_cam_to_road = np.column_stack((TR_cam_to_road, np.array([P0_x,-P0_z,P0_y])))
 
     def write_flat(f, name, arr):
         f.write("{}: {}\n".format(name, ' '.join(
@@ -146,35 +169,11 @@ def save_calibration_matrices(transform, filename, intrinsic_mat):
 
     # All matrices are written on a line with spacing
     with open(filename, 'w') as f:
-        # for i in range(6):  # Avod expects all 4 P-matrices even though we only use the first
-        #     write_flat(f, "P" + str(i), P0)
-
-        write_flat(f, "P0", P0)
-        # generate P1-P5 transform :
-        # transform into P0 [front] camera coordinate
-
-        for i in range(1, 6):
-        #     cam_transform = transform[i]
-        #     Pi = intrinsic_mat
-        #     Pi = np.column_stack((Pi, np.array([0,0,0])))
-        #
-        #     Rot_z = np.zeros((4,4))
-        #     Rot_z[0, 0] = math.cos(cam_transform.rotation.yaw)
-        #     Rot_z[0, 1] = -math.sin(cam_transform.rotation.yaw)
-        #     Rot_z[1, 0] = math.sin(cam_transform.rotation.yaw)
-        #     Rot_z[1, 1] = math.cos(cam_transform.rotation.yaw)
-        #     Rot_z[1, 3] = cam_transform.location.y
-        #     Rot_z[2, 2] = 1.
-        #     Rot_z[3, 3] = 1.
-        #
-        #     Pi = np.dot(Pi,Rot_z)
-        #     Pi = np.ravel(Pi, order=ravel_mode)
+        for i in range(4):  # Avod expects all 4 P-matrices even though we only use the first
             write_flat(f, "P" + str(i), P0)
-
         write_flat(f, "R0_rect", R0)
         write_flat(f, "Tr_velo_to_cam", TR_velodyne)
         write_flat(f, "TR_imu_to_velo", TR_imu_to_velo)
-        write_flat(f, "TR_cam_to_road", TR_cam_to_road)
     logging.info("Wrote all calibration matrices to %s", filename)
 
 def save_rgb_image(filename, image):

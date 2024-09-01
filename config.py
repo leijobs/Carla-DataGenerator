@@ -1,7 +1,6 @@
 import sys
 import yaml
-
-sys.path.append("F:/CARLA_Simulator/CARLA_0.9.12/WindowsNoEditor/PythonAPI/carla/dist/carla-0.9.12-py3.7-win-amd64.egg")
+sys.path.append("/home/hosico/DataDisk/hdd2/carla-0911/CARLA/PythonAPI/carla/dist/carla-0.9.11-py3.7-linux-x86_64.egg")
 
 import carla
 

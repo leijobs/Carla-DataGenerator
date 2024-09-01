@@ -16,20 +16,17 @@
    1    rotation_y   Rotation ry around Y-axis in camera coordinates [-pi..pi]
    1    score        Only for results: Float, indicating confidence in
                      detection, needed for p/r curves, higher is better.
-    return "{} {} {} {} {} {} {} {}".format(self.type, self.truncated, self.occluded,
-                                                         self.alpha, bbox_format, self.dimensions, self.location,
-                                                         self.rotation_y)
-
 """
 
 from typing import List
 from math import pi
 
+
 class KittiDescriptor:
     """
     Kitti格式的label类
     """
-    def __init__(self, type=None, bbox=None, dimensions=None, location=None, rotation_y=None, extent=None):
+    def __init__(self, type=None, bbox=None, dimensions=None, location=None, rotation_y=None, track_id=None, extent=None):
         self.type = type
         self.truncated = 0
         self.occluded = 0
@@ -38,6 +35,7 @@ class KittiDescriptor:
         self.dimensions = dimensions
         self.location = location
         self.rotation_y = rotation_y
+        self.track_id = track_id
         self.extent = extent
 
     def set_type(self, obj_type: str):
@@ -100,7 +98,6 @@ class KittiDescriptor:
         """
         # Object location is four values (x, y, z, w). We only care about three of them (xyz)
         x, y, z = [float(x) for x in obj_location][0:3]
-        y = y - 0.1
         assert None not in [
             self.extent, self.type], "Extent and type must be set before location!"
 
@@ -117,6 +114,9 @@ class KittiDescriptor:
                 rotation_y)
         self.rotation_y = rotation_y
 
+    def set_track_id(self, id: int):
+        self.track_id = id
+
 
     def __str__(self):
         """ Returns the kitti formatted string of the datapoint if it is valid (all critical variables filled out), else it returns an error."""
@@ -126,9 +126,10 @@ class KittiDescriptor:
             bbox_format = " ".join([str(x) for x in self.bbox])
 
         # kitti目标检测数据的标准格式
-        return "{} {} {} {} {} {} {} {}".format(self.type, self.truncated, self.occluded,
+        score = 1
+        return "{} {} {} {} {} {} {} {} {} {}".format(self.type, self.truncated, self.occluded,
                                                          self.alpha, bbox_format, self.dimensions, self.location,
-                                                         self.rotation_y)
+                                                         self.rotation_y, score, self.track_id)
 
 """
 #Values    Name      Description

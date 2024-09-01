@@ -1,5 +1,4 @@
 import queue
-import sys
 import random
 import logging
 
@@ -8,7 +7,8 @@ import numpy as np
 from config import config_to_trans
 from data_utils import camera_intrinsic, filter_by_distance
 
-sys.path.append("/opt/carla-simulator/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg")
+import sys
+sys.path.append("/home/hosico/DataDisk/hdd2/carla-0911/CARLA/PythonAPI/carla/dist/carla-0.9.11-py3.7-linux-x86_64.egg")
 
 import carla
 
@@ -18,7 +18,6 @@ class SynchronyModel:
         self.cfg = cfg
         self.client = carla.Client('localhost', 2000)
         self.client.set_timeout(5.0)
-        # self.world = self.client.get_world()
         self.world = self.client.load_world('Town03')
         self.traffic_manager = self.client.get_trafficmanager()
         self.init_settings = None
@@ -151,10 +150,10 @@ class SynchronyModel:
 
         self.actors["sensors"][agent] = []
         for sensor, config in self.cfg["SENSOR_CONFIG"].items():
-            ## print("config list :", config)
             sensor_bp = self.world.get_blueprint_library().find(config["BLUEPRINT"])
-            for attr, val in config["ATTRIBUTE"].items():
-                sensor_bp.set_attribute(attr, str(val))
+            if "ATTRIBUTE" in config:
+                for attr, val in config["ATTRIBUTE"].items():
+                    sensor_bp.set_attribute(attr, str(val))
             trans_cfg = config["TRANSFORM"]
             transform = carla.Transform(carla.Location(trans_cfg["location"][0],
                                                        trans_cfg["location"][1],
@@ -180,16 +179,16 @@ class SynchronyModel:
 
         ret["environment_objects"] = self.world.get_environment_objects(carla.CityObjectLabel.Any)
         ret["actors"] = self.world.get_actors()
-        image_width = self.cfg["SENSOR_CONFIG"]["RGB_Front"]["ATTRIBUTE"]["image_size_x"]
-        image_height = self.cfg["SENSOR_CONFIG"]["RGB_Front"]["ATTRIBUTE"]["image_size_y"]
+        image_width = self.cfg["SENSOR_CONFIG"]["RGB"]["ATTRIBUTE"]["image_size_x"]
+        image_height = self.cfg["SENSOR_CONFIG"]["RGB"]["ATTRIBUTE"]["image_size_y"]
         for agent, dataQue in self.data["sensor_data"].items():
             data = [self._retrieve_data(q) for q in dataQue]
             assert all(x.frame == self.frame for x in data)
             ret["agents_data"][agent] = {}
             ret["agents_data"][agent]["sensor_data"] = data
             ret["agents_data"][agent]["intrinsic"] = camera_intrinsic(image_width, image_height)
-            ret["agents_data"][agent]["extrinsic"] = np.mat(
-                self.actors["sensors"][agent][0].get_transform().get_matrix())
+            ret["agents_data"][agent]["extrinsic"] = np.mat(self.actors["sensors"][agent][0].get_transform().get_matrix())
+            ret["agents_data"][agent]["ego_pose"] = self.actors["sensors"][agent][0].get_transform()
         filter_by_distance(ret, self.cfg["FILTER_CONFIG"]["PRELIMINARY_FILTER_DISTANCE"])
         return ret
 
