@@ -9,7 +9,7 @@ from image_converter import depth_to_array, to_rgb_array
 import math
 from visual_utils import draw_3d_bounding_box
 
-sys.path.append("/opt/carla-simulator/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg")
+sys.path.append("/home/hosico/DataDisk/hdd2/carla/PythonAPI/carla/dist/carla-0.9.11-py3.7-linux-x86_64.egg")
 
 import carla
 
@@ -18,8 +18,8 @@ cfg = cfg_from_yaml_file("configs.yaml")
 MAX_RENDER_DEPTH_IN_METERS = cfg["FILTER_CONFIG"]["MAX_RENDER_DEPTH_IN_METERS"]
 MIN_VISIBLE_VERTICES_FOR_RENDER = cfg["FILTER_CONFIG"]["MIN_VISIBLE_VERTICES_FOR_RENDER"]
 MAX_OUT_VERTICES_FOR_RENDER = cfg["FILTER_CONFIG"]["MAX_OUT_VERTICES_FOR_RENDER"]
-WINDOW_WIDTH = cfg["SENSOR_CONFIG"]["RGB_Front"]["ATTRIBUTE"]["image_size_x"]
-WINDOW_HEIGHT = cfg["SENSOR_CONFIG"]["RGB_Front"]["ATTRIBUTE"]["image_size_y"]
+WINDOW_WIDTH = cfg["SENSOR_CONFIG"]["DEPTH_RGB"]["ATTRIBUTE"]["image_size_x"]
+WINDOW_HEIGHT = cfg["SENSOR_CONFIG"]["DEPTH_RGB"]["ATTRIBUTE"]["image_size_y"]
 
 vehicles = ["vehicle.audi.a2", "vehicle.audi.etron", "vehicle.audi.tt", "vehicle.bmw.grandtourer", "vehicle.citroen.c3", "vehicle.dodge.charger_2020", "vehicle.dodge.charger_police", "vehicle.dodge.charger_police_2020",
             "vehicle.ford.crown", "vehicle.ford.mustang", "vehicle.jeep.wrangler_rubicon", "vehicle.lincoln.mkz_2017", "vehicle.lincoln.mkz_2020", "vehicle.mercedes.coupe", "vehicle.mercedes.coupe_2020", "vehicle.micro.microlino",
@@ -28,6 +28,7 @@ cycles = ["vehicle.harley-davidson.low_rider", "vehicle.kawasaki.ninja", "vehicl
 van = ["vehicle.ford.ambulance", "vehicle.mercedes.sprinter", "vehicle.volkswagen.t2", "vehicle.volkswagen.t2_2021"]
 bus = ["vehicle.mitsubishi.fusorosa"]
 truck = ["vehicle.carlamotors.firetruck", "vehicle.carlamotors.carlacola", "vehicle.carlamotors.european_hgv"]
+
 
 def objects_filter(data):
     environment_objects = data["environment_objects"]
@@ -77,9 +78,8 @@ def is_visible_by_bbox(agent, obj, rgb_image, depth_data, intrinsic, extrinsic):
     depth_image = depth_to_array(depth_data)
     num_visible_vertices, num_vertices_outside_camera = calculate_occlusion_stats(vertices_pos2d, depth_image)
     obj_tp = obj_type(obj)
-    if obj_tp is not None and obj_tp is not "Environment" and num_visible_vertices >= MIN_VISIBLE_VERTICES_FOR_RENDER and num_vertices_outside_camera < MAX_OUT_VERTICES_FOR_RENDER:
-    # if obj_tp is not None and obj_tp is not "Environment" and num_visible_vertices >= MIN_VISIBLE_VERTICES_FOR_RENDER:
-        # obj_tp = obj_type(obj)
+    if obj_tp is not "Environment" and num_visible_vertices >= MIN_VISIBLE_VERTICES_FOR_RENDER and num_vertices_outside_camera < MAX_OUT_VERTICES_FOR_RENDER:
+        # if num_visible_vertices >= MIN_VISIBLE_VERTICES_FOR_RENDER and num_vertices_outside_camera < MAX_OUT_VERTICES_FOR_RENDER:
         midpoint = midpoint_from_agent_location(obj_transform.location, extrinsic)
         bbox_2d = calc_projected_2d_bbox(vertices_pos2d)
         rotation_y = get_relative_rotation_y(agent.get_transform().rotation, obj_transform.rotation) % math.pi
@@ -101,31 +101,29 @@ def is_visible_by_bbox(agent, obj, rgb_image, depth_data, intrinsic, extrinsic):
         # draw_3d_bounding_box(rgb_image, vertices_pos2d)
 
         kitti_data = KittiDescriptor()
-        carla_data = CarlaDescriptor()
-        if obj_tp in ["Car", "Pedestrian", "Cyclist", "Van", "Truck"]:
-            kitti_data.set_truncated(truncated)
-            kitti_data.set_occlusion(occluded)
-            kitti_data.set_bbox(bbox_2d)
-            kitti_data.set_3d_object_dimensions(ext)
-            kitti_data.set_type(obj_tp)
-            kitti_data.set_3d_object_location(midpoint)
-            kitti_data.set_rotation_y(rotation_y)
+        kitti_data.set_truncated(truncated)
+        kitti_data.set_occlusion(occluded)
+        kitti_data.set_bbox(bbox_2d)
+        kitti_data.set_3d_object_dimensions(ext)
+        kitti_data.set_type(obj_tp)
+        kitti_data.set_3d_object_location(midpoint)
+        kitti_data.set_rotation_y(rotation_y)
+        kitti_data.set_track_id(obj.id)
 
-            carla_data.set_type(obj_tp)
-            carla_data.set_velocity(velocity)
-            carla_data.set_acceleration(acceleration)
-            carla_data.set_angular_velocity(angular_velocity)
+        carla_data = CarlaDescriptor()
+        carla_data.set_type(obj_tp)
+        carla_data.set_velocity(velocity)
+        carla_data.set_acceleration(acceleration)
+        carla_data.set_angular_velocity(angular_velocity)
         return kitti_data, carla_data
     return None, None
+
 
 def obj_type(obj):
     if isinstance(obj, carla.EnvironmentObject):
         return "Environment"
-    print("obj is :", obj.type_id)
     if obj.type_id.find('walker') is not -1:
-        print("Perdestrian detected !")
         return 'Pedestrian'
-    # print("obj_type is :",obj.type_id)
     obj_tp = obj.type_id
     if obj_tp in vehicles:
         return 'Car'
@@ -136,20 +134,6 @@ def obj_type(obj):
     if obj_tp in van or bus:
         return 'Van'
     return None
-    # if isinstance(obj, carla.EnvironmentObject):
-    #     return obj.type
-    # else:
-    #     if obj.type_id.find('walker') is not -1:
-    #         return 'Pedestrian'
-    #     if obj.type_id.find('vehicle') in vehicles:
-    #         return 'Car'
-    #     if obj.type_id.find('vehicle') in cycles:
-    #         return 'Cyclist'
-    #     if obj.type_id.find('vehicle') in truck:
-    #         return 'Truck'
-    #     if obj.type_id.find('vehicle') in van or bus:
-    #         return 'Van'
-    #     return None
 
 def get_relative_rotation_y(agent_rotation, obj_rotation):
     """ 返回actor和camera在rotation yaw的相对角度 """
@@ -334,8 +318,6 @@ def calc_projected_2d_bbox(vertices_pos2d):
         int(x[1][0]) for x in legal_pos2d]
     min_x, max_x = min(x_coords), max(x_coords)
     min_y, max_y = min(y_coords), max(y_coords)
-    min_y = min_y * 0.95
-    max_y = max_y * 1.05
     return [min_x, min_y, max_x, max_y]
 
 def degrees_to_radians(degrees):
