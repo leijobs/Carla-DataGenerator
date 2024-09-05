@@ -1,175 +1,242 @@
-import k3d
 import numpy as np
-from .helpers import k3d_get_axes, get_transformed_3d_label_corners, k3d_plot_box, \
-    get_radar_velocity_vectors, get_default_camera
-from vkitti.frame import FrameDataLoader, FrameTransformMatrix, FrameLabels, transform_pcl
-from .settings import *
+import mayavi.mlab as mlab
+
+from vkitti.frame import FrameDataLoader, FrameTransformMatrix, FrameLabels, project_pcl_to_image, min_max_filter, homogeneous_transformation
+
+from .helpers import plot_boxes, get_2d_label_corners, get_transformed_3d_label_corners
+from .settings import label_color_palette_2d
+
+
+def plot_3d_boxes(fig, labels, colors, draw_text=True, text_scale=1.0, line_width=1.0):
+    for label, color in zip(labels, colors):
+        b = label
+        if draw_text:
+            mlab.text3d(
+                b[4, 0],
+                b[4, 1],
+                b[4, 2],
+                label,
+                scale=text_scale,
+                color=color,
+                figure=fig,
+            )
+        for k in range(0, 4):
+            i, j = k, (k + 1) % 4
+            mlab.plot3d(
+                [b[i, 0], b[j, 0]],
+                [b[i, 1], b[j, 1]],
+                [b[i, 2], b[j, 2]],
+                color=color,
+                tube_radius=None,
+                line_width=line_width,
+                figure=fig,
+            )
+
+            i, j = k + 4, (k + 1) % 4 + 4
+            mlab.plot3d(
+                [b[i, 0], b[j, 0]],
+                [b[i, 1], b[j, 1]],
+                [b[i, 2], b[j, 2]],
+                color=color,
+                tube_radius=None,
+                line_width=line_width,
+                figure=fig,
+            )
+
+            i, j = k, k + 4
+            mlab.plot3d(
+                [b[i, 0], b[j, 0]],
+                [b[i, 1], b[j, 1]],
+                [b[i, 2], b[j, 2]],
+                color=color,
+                tube_radius=None,
+                line_width=line_width,
+                figure=fig,
+            )
+    return fig
 
 
 class Visualization3D:
     """
-    This class is responsible for creating 3D plots inside Jupyter notebooks using the k3d library.
+    This class is responsible for plotting a frame from the set, and visualize
+     its image with its point clouds (radar and/or LiDAR), annotations projected and overlaid.
     """
-
-    def __init__(self, frame_data: FrameDataLoader, origin='camera'):
+    def __init__(self,
+                 frame_data_loader: FrameDataLoader,
+                 classes_visualized: list = ['Cyclist', 'Pedestrian', 'Car', 'Van', 'Bus', 'Truck']
+                 ):
         """
-Constructor which prepared the 3D plot in the requested frame.
-        :param frame_data:
+Constructor of the class, which loads the required frame properties, and creates a copy of the picture data.
+        :param frame_data_loader: FrameDataLoader instance.
+        :param classes_visualized: A list of classes to be visualized.
         """
-        self.plot = None
-        self.frame_data = frame_data
-        self.frame_transforms = FrameTransformMatrix(self.frame_data)
+        self.frame_data_loader = frame_data_loader
+        self.frame_transformations = FrameTransformMatrix(self.frame_data_loader)
 
-        self.origin = origin
+        self.classes_visualized = classes_visualized
+        self.cam_centered = False
 
-        if self.origin == 'camera':
-            self.transform_matrices = {
-                'camera': np.eye(4, dtype=float),
-                'lidar': self.frame_transforms.t_camera_lidar,
-            }
-        elif self.origin == 'lidar':
-            self.transform_matrices = {
-                'camera': self.frame_transforms.t_lidar_camera,
-                'lidar': np.eye(4, dtype=float),
-            }
-        else:
-            raise ValueError("Origin must be camera, lidar or radar!")
+        self.lidar_points = self.frame_data_loader.lidar_data
 
-    def __call__(self,
-                 lidar_origin_plot: bool = False,
-                 camera_origin_plot: bool = False,
-                 lidar_points_plot: bool = False,
-                 plot_annotations: bool = False):
+    def plot_range(self, fig):
+        center = [0., 0., 0.]
+        radius_list = [10, 20, 30, 40, 50]  # 半径
+        start_angle = -np.pi / 3  # 起始角度（弧度）
+        end_angle = np.pi / 3  # 结束角度（弧度）
+        num_points = 100  # 点的数量
 
-        self.draw_plot(
-                       lidar_origin_plot,
-                       camera_origin_plot,
-                       lidar_points_plot,
-                       plot_annotations)
+        # # 使用 Mayavi 绘制点
+        # mlab.figure(bgcolor=(1, 1, 1))  # 设置背景颜色为白色
 
-    def plot_lidar_origin(self,
-                          label: bool = True,
-                          color: int = lidar_plot_color_3d,
-                          axis_length: float = axis_length_3d,
-                          label_size: float = axis_label_size):
+        # 生成圆弧上的点
+        for radius in radius_list:
+            angles = np.linspace(start_angle, end_angle, num_points)
+            x = center[0] + radius * np.cos(angles)
+            y = center[1] + radius * np.sin(angles)
+            z = np.zeros_like(x)  # 所有点都在 z=0 的平面上
+            mlab.points3d(x, y, z, mode='sphere', color=(0, 0, 1), scale_factor=0.5)  # 绘制蓝色的点
+
+        # 生成fov
+        x_max_s = center[0] + radius_list[-1] * np.cos(start_angle)
+        y_max_s = center[1] + radius_list[-1] * np.sin(start_angle)
+        x = np.linspace(0, x_max_s, num_points)
+        y = np.linspace(0, y_max_s, num_points)
+        z = np.zeros_like(x)  # 所有点都在 z=0 的平面上
+        mlab.points3d(x, y, z, mode='sphere', color=(0, 0, 1), scale_factor=0.5)  # 绘制蓝色的点
+
+        x_max_e = center[0] + radius_list[-1] * np.cos(end_angle)
+        y_max_e = center[1] + radius_list[-1] * np.sin(end_angle)
+        x = np.linspace(0, x_max_e, num_points)
+        y = np.linspace(0, y_max_e, num_points)
+        z = np.zeros_like(x)  # 所有点都在 z=0 的平面上
+        mlab.points3d(x, y, z, mode='sphere', color=(0, 0, 1), scale_factor=0.5)  # 绘制蓝色的点
+
+        # 定义坐标轴的长度
+        axis_length = 1.0
+
+        # 在原点处绘制X轴箭头
+        x_axis = np.array([[center[0], center[1], center[2]],
+                           [center[0] + axis_length, center[1], center[2]]])
+        mlab.quiver3d(x_axis[:, 0], x_axis[:, 1], x_axis[:, 2], color=(1, 0, 0), mode='arrow', scale_factor=1)
+
+        # 在原点处绘制Y轴箭头
+        y_axis = np.array([[center[0], center[1], center[2]],
+                           [center[0], center[1] + axis_length, center[2]]])
+        mlab.quiver3d(y_axis[:, 0], y_axis[:, 1], y_axis[:, 2], color=(0, 1, 0), mode='arrow', scale_factor=1)
+
+        # 在原点处绘制Z轴箭头
+        z_axis = np.array([[center[0], center[1], center[2]],
+                           [center[0], center[1], center[2] + axis_length]])
+        mlab.quiver3d(z_axis[:, 0], z_axis[:, 1], z_axis[:, 2], color=(0, 0, 1), mode='arrow', scale_factor=1)
+
+        mlab.text3d(1, 0, 0, 'X', color=(0, 0, 1), scale=0.2)
+        mlab.text3d(0, 1, 0, 'Y', color=(0, 0, 1), scale=0.2)
+        mlab.text3d(0, 0, 1, 'Z', color=(0, 0, 1), scale=0.2)
+
+    def plot_gt_labels(self, fig, max_distance_threshold):
         """
-This method plots the lidar origin in the requested frame.
-        :param axis_length: Vector length of the axis.
-        :param label: Bool which sets if the label should be displayed.
-        :param color: Color of the label in int.
-        :param label_size: Size of the label.
+This method plots the ground truth labels on the frame.
+        :param max_distance_threshold: The maximum distance where labels are rendered.
         """
-        self.plot += k3d_get_axes(self.transform_matrices['lidar'], axis_length)
+        frame_labels_class = FrameLabels(self.frame_data_loader.raw_labels)
+        frame_labels = frame_labels_class.labels_dict
 
-        if label:
-            self.plot += k3d.text("lidar",
-                                  position=self.transform_matrices['lidar'][0:3, 3],
-                                  color=color,
-                                  size=label_size)
+        # Class filter
+        filtered = list(filter(lambda elem: elem['label_class'] in self.classes_visualized, frame_labels))
 
-    def plot_camera_origin(self,
-                           label: bool = True,
-                           color: int = lidar_plot_color_3d,
-                           axis_length: float = axis_length_3d,
-                           label_size: float = axis_label_size):
+        # Distance filter
+        filtered = list(filter(lambda elem: elem['range'] < max_distance_threshold, filtered))
+
+        colors = [label_color_palette_2d[v["label_class"]] for v in filtered]
+
+        plot_3d_boxes(fig, filtered, colors)
+
+    def plot_predictions(self, fig, score_threshold, max_distance_threshold):
         """
-This method plots the camera origin in the requested frame.
-        :param axis_length: Vector length of the axis.
-        :param label: Bool which sets if the label should be displayed.
-        :param color: Color of the label in int.
-        :param label_size: Size of the label.
+This method plots the prediction labels on the frame.
+        :param score_threshold: The minimum score to be rendered.
+        :param max_distance_threshold: The maximum distance where labels are rendered.
         """
-        self.plot += k3d_get_axes(self.transform_matrices['camera'], axis_length)
+        frame_labels_class = FrameLabels(self.frame_data_loader.raw_labels)
+        frame_labels = frame_labels_class.labels_dict
 
-        if label:
-            self.plot += k3d.text("camera",
-                                  position=self.transform_matrices['camera'][0:3, 3],
-                                  color=color,
-                                  size=label_size)
+        # Class filter
+        filtered = list(filter(lambda elem: elem['label_class'] in self.classes_visualized, frame_labels))
 
-    def plot_lidar_points(self,
-                          pcl_size: float = lidar_pcl_size,
-                          color: int = lidar_plot_color_3d):
+        # Distance filter
+        filtered = list(filter(lambda elem: elem['range'] < max_distance_threshold, filtered))
+
+        colors = [label_color_palette_2d[v["label_class"]] for v in filtered]
+
+        plot_3d_boxes(fig, filtered, colors)
+
+    def plot_lidar_pcl(self, fig, max_distance_threshold, min_distance_threshold):
         """
-This method plots the lidar pcl on the requested frame.
-        :param pcl_size: Size of the pcl particles in the graph.
-        :param color: Color of the pcl particles in the graph.
+This method plots the lidar pcl on the frame. It colors the points based on distance.
+        :param max_distance_threshold: The maximum distance where points are rendered.
+        :param min_distance_threshold: The minimum distance where points are rendered.
         """
-        lidar_points_camera_frame = transform_pcl(points=self.frame_data.lidar_data,
-                                                  transform_matrix=self.transform_matrices['lidar'])
+        t_camera_lidar = self.frame_transformations.t_camera_lidar
+        t_camera_lidar[1, 3] = -0.5  # lidar 1.7m - 2.2m
+        point_homo = np.hstack((self.lidar_points[:, :3],
+                                np.ones((self.lidar_points.shape[0], 1),
+                                        dtype=np.float32)))
 
-        self.plot += k3d.points(positions=np.asarray(lidar_points_camera_frame[:, :3], dtype=float),
-                                point_size=pcl_size,
-                                color=color)
+        points_camera_frame = homogeneous_transformation(point_homo,
+                                                         transform=t_camera_lidar)
 
-    def plot_annotations(self, class_colors=label_color_palette_3d, class_width=label_line_width_3d):
-        """
-This method plots the annotations in the requested frame.
-        :param class_colors: Dictionary that contains the colors for the annotations.
-        :param class_width: Dictionary that contains the line width for the annotations.
-        """
-        labels: FrameLabels = FrameLabels(self.frame_data.raw_labels)
+        x = self.lidar_points[:, 0]
+        y = self.lidar_points[:, 1]
+        z = self.lidar_points[:, 2]
 
-        bboxes = get_transformed_3d_label_corners(labels,
-                                                  self.transform_matrices['lidar'],
-                                                  self.frame_transforms.t_camera_lidar)
+        d = np.sqrt(x ** 2 + y ** 2)
+        col = self.lidar_points[:, 2]
 
-        for box in bboxes:
-            object_class = box['label_class']
+        mlab.points3d(x, y, z,
+                      col,
+                      scale_factor=5,
+                      mode='point',
+                      colormap='spectral',  # bone, copper, gnuplot
+                      figure=fig,
+                      )
 
-            object_class_color = class_colors[object_class]
-            object_class_width = class_width[object_class]
-
-            corners_object = box['corners_3d_transformed']
-
-            k3d_plot_box(self.plot, corners_object, object_class_color, object_class_width)
 
     def draw_plot(self,
-                  lidar_origin_plot: bool = False,
-                  camera_origin_plot: bool = False,
-                  lidar_points_plot: bool = False,
-                  annotations_plot: bool = False,
-                  write_to_html: bool = False,
-                  html_name: str = "example",
-                  grid_visible: bool = False,
-                  auto_frame: bool = False,
-                  ):
+                  cam_centered: bool = True,
+                  show_gt: bool = False,
+                  show_pred: bool = False,
+                  show_lidar: bool = False,
+                  show_range: bool = False,
+                  max_distance_threshold: float = 50.0,
+                  min_distance_threshold: float = 0.0,
+                  score_threshold: float = 0, ):
         """
-This method displays the plot with the specified arguments.
-        :param auto_frame: When set to true, the frame is size automatically.
-        :param grid_visible: Plot grid background.
-        :param lidar_origin_plot: Plots the lidar origin axis.
-        :param camera_origin_plot: Plots the camera origin axis.
-        :param lidar_points_plot: Plots the lidar PCL.
-        :param annotations_plot: Plots the annotations.
-        :param write_to_html: Allows the plot to be written to html.
-        :param html_name: Name of the html file if written to disk.
+This method can be called to draw the frame with the required information.
+        :param show_gt: Should the ground truth be plotted.
+        :param show_pred: Should the predictions be plotted.
+        :param show_lidar: Should the lidar pcl be plotted.
+        :param max_distance_threshold: Maximum distance of objects to be plotted.
+        :param min_distance_threshold:  Minimum distance of objects to be plotted.
+        :param score_threshold: Minimum score for objects to be plotted.
         """
+        fig = mlab.figure(
+            figure=None, bgcolor=(0, 0, 0), fgcolor=None, engine=None, size=(1600, 1000)
+        )
 
-        self.plot = k3d.plot(camera_auto_fit=auto_frame, axes_helper=0.0, grid_visible=grid_visible)
+        self.cam_centered = cam_centered
 
-        if lidar_origin_plot:
-            self.plot_lidar_origin()
+        if show_gt:
+            self.plot_gt_labels(fig=fig, max_distance_threshold=max_distance_threshold)
 
-        if camera_origin_plot:
-            self.plot_camera_origin()
+        if show_pred:
+            self.plot_predictions(fig=fig, max_distance_threshold=max_distance_threshold,
+                                  score_threshold=score_threshold)
 
-        if lidar_points_plot:
-            self.plot_lidar_points()
+        if show_lidar:
+            self.plot_lidar_pcl(fig=fig, max_distance_threshold=max_distance_threshold,
+                                min_distance_threshold=min_distance_threshold)
 
-        if annotations_plot:
-            self.plot_annotations()
+        if show_range:
+            self.plot_range(fig=fig)
 
-        if not auto_frame:
-            self.plot.camera = get_default_camera(self.transform_matrices['lidar'])
-
-        self.plot.display()
-
-        # if write_to_html:
-        #     self.plot.snapshot_type = 'inline'
-        #
-        #     data = self.plot.get_snapshot()
-        #
-        #     with open(f'{html_name}.html', 'w') as f:
-        #         f.write(data)
-
+        mlab.show()

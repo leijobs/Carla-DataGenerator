@@ -86,6 +86,7 @@ def vis_pc_2d_img(mask, point_cloud, labels, map_extents, map_resolution, name_i
     point_cloud_new = point_cloud_new[cols]
     cols = np.where(point_cloud_new[:, 0] < x2)
     point_cloud_new = point_cloud_new[cols]
+
     if labels:
         for label in labels:
             print(np.rad2deg(label['rotation']) - 90)
@@ -99,7 +100,7 @@ def vis_pc_2d_img(mask, point_cloud, labels, map_extents, map_resolution, name_i
             #                  label['w'] / map_resolution, label['l'] / map_resolution, np.rad2deg(label['rotation']) - 90,
             #                  linewidth=2, edgecolor='r', facecolor='r')
             ax.add_patch(rect)
-        ax.scatter(point_cloud_new[:, 0] / map_resolution + 100, point_cloud_new[:, 2] / map_resolution, s=1)
+    ax.scatter(point_cloud_new[:, 0] / map_resolution + 100, point_cloud_new[:, 2] / map_resolution, s=1)
     ax.set_xlim(0, 200)
     ax.set_ylim(0, 200)
 
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     # config.merge_from_file('../configs/datasets/vod.yml')
 
     # Create an vod instance
-    root_dir = r"C:\Users\hoho\Documents\GitHub\Carla-DataGenerator"
+    root_dir = r"E:\Dataset\VKITTI"
     kitti_locations = KittiLocations(is_train=True,
                                      root_dir=root_dir,
                                      output_dir="example_output",

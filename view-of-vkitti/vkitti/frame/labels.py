@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Optional, List
 
 
@@ -55,6 +56,7 @@ This method returns a list of dictionaries containing the label data.
             type, truncated, occluded, alpha, bbox_x1, bbox_y1, bbox_x2, bbox_y2, h, w, l, x, y, z, rot, score, track_id = act_line
             h, w, l, x, y, z, rot, score = map(float, [h, w, l, x, y, z, rot, score])
             bbox_x1, bbox_y1, bbox_x2, bbox_y2 = map(int, [bbox_x1, bbox_y1, bbox_x2, bbox_y2])
+            range = np.sqrt(x**2 + y**2)
             if rot > 2:
                 rot = -rot
 
@@ -69,6 +71,7 @@ This method returns a list of dictionaries containing the label data.
                            'x': x,
                            'y': y,
                            'z': z,
+                           'range': range,
                            'rotation': rot,
                            'score': score}
                           )
